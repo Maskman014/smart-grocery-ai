@@ -1,0 +1,5 @@
+{
+  "name": "Smart Grocery AI",
+  "description": "AI-powered grocery assistant that parses lists, estimates costs, and recommends the best stores based on pricing and history.",
+  "requestFramePermissions": ["camera"]
+}
