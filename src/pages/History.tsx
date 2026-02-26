@@ -138,7 +138,7 @@ export const History: React.FC = () => {
                       {item.recommended_store}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-right text-white font-medium">${item.total_cost.toFixed(2)}</td>
+                  <td className="px-6 py-4 text-right text-white font-medium">₹{item.total_cost.toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>

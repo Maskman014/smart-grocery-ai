@@ -155,7 +155,7 @@ export const Dashboard: React.FC = () => {
                 <div className="flex justify-between items-center pt-4 border-t border-gray-700">
                   <span className="text-gray-400">Estimated Total</span>
                   <span className="text-2xl font-bold text-white">
-                    ${items.reduce((sum, item) => sum + Number(item.estimated_price), 0).toFixed(2)}
+                    ₹{items.reduce((sum, item) => sum + Number(item.estimated_price), 0).toFixed(2)}
                   </span>
                 </div>
                 <button

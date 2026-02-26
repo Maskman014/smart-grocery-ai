@@ -161,7 +161,7 @@ export const EditList: React.FC = () => {
                     <th className="px-4 py-3 w-20">Qty</th>
                     <th className="px-4 py-3 w-20">Unit</th>
                     <th className="px-4 py-3">Category</th>
-                    <th className="px-4 py-3 text-right w-24">Price</th>
+                    <th className="px-4 py-3 text-right w-24">Price (₹)</th>
                     <th className="px-4 py-3 w-10"></th>
                   </tr>
                 </thead>
@@ -241,7 +241,7 @@ export const EditList: React.FC = () => {
               <div className="flex justify-between items-center pt-4 border-t border-gray-700">
                 <span className="text-gray-400">Estimated Total</span>
                 <span className="text-3xl font-bold text-white">
-                  ${items.reduce((sum, item) => sum + Number(item.estimated_price), 0).toFixed(2)}
+                  ₹{items.reduce((sum, item) => sum + Number(item.estimated_price), 0).toFixed(2)}
                 </span>
               </div>
             </div>

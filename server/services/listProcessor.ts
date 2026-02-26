@@ -3,32 +3,32 @@ import db from '../db.js';
 // ... (existing imports and constants)
 
 const ITEM_DATABASE: Record<string, { category: string; base_price: number }> = {
-  milk: { category: 'Dairy', base_price: 3.50 },
-  bread: { category: 'Bakery', base_price: 2.50 },
-  eggs: { category: 'Dairy', base_price: 4.00 },
-  banana: { category: 'Produce', base_price: 0.50 },
-  apple: { category: 'Produce', base_price: 0.80 },
-  chicken: { category: 'Meat', base_price: 8.00 },
-  rice: { category: 'Grains', base_price: 5.00 },
-  cheese: { category: 'Dairy', base_price: 6.00 },
-  yogurt: { category: 'Dairy', base_price: 1.20 },
-  potato: { category: 'Produce', base_price: 0.60 },
-  onion: { category: 'Produce', base_price: 0.70 },
-  tomato: { category: 'Produce', base_price: 0.90 },
-  beef: { category: 'Meat', base_price: 12.00 },
-  pasta: { category: 'Grains', base_price: 2.00 },
-  cereal: { category: 'Breakfast', base_price: 4.50 },
-  coffee: { category: 'Beverages', base_price: 10.00 },
-  tea: { category: 'Beverages', base_price: 4.00 },
-  sugar: { category: 'Baking', base_price: 2.50 },
-  flour: { category: 'Baking', base_price: 3.00 },
-  butter: { category: 'Dairy', base_price: 5.00 },
+  milk: { category: 'Dairy', base_price: 60.00 },
+  bread: { category: 'Bakery', base_price: 40.00 },
+  eggs: { category: 'Dairy', base_price: 72.00 }, // per dozen
+  banana: { category: 'Produce', base_price: 50.00 }, // per dozen
+  apple: { category: 'Produce', base_price: 180.00 }, // per kg
+  chicken: { category: 'Meat', base_price: 250.00 }, // per kg
+  rice: { category: 'Grains', base_price: 60.00 }, // per kg
+  cheese: { category: 'Dairy', base_price: 450.00 }, // per kg
+  yogurt: { category: 'Dairy', base_price: 30.00 },
+  potato: { category: 'Produce', base_price: 30.00 }, // per kg
+  onion: { category: 'Produce', base_price: 40.00 }, // per kg
+  tomato: { category: 'Produce', base_price: 40.00 }, // per kg
+  beef: { category: 'Meat', base_price: 400.00 }, // per kg
+  pasta: { category: 'Grains', base_price: 120.00 },
+  cereal: { category: 'Breakfast', base_price: 350.00 },
+  coffee: { category: 'Beverages', base_price: 600.00 },
+  tea: { category: 'Beverages', base_price: 400.00 },
+  sugar: { category: 'Baking', base_price: 45.00 },
+  flour: { category: 'Baking', base_price: 40.00 },
+  butter: { category: 'Dairy', base_price: 500.00 },
 };
 
 const STORES = [
-  { name: 'Local Market', multiplier: 1.1, bulk_discount: 0.0, min_bulk_items: 0 },
-  { name: 'SuperMart', multiplier: 1.0, bulk_discount: 0.05, min_bulk_items: 5 },
-  { name: 'Wholesale Club', multiplier: 0.85, bulk_discount: 0.1, min_bulk_items: 10 },
+  { name: 'Reliance Fresh', multiplier: 1.05, bulk_discount: 0.02, min_bulk_items: 0 },
+  { name: 'BigBasket', multiplier: 1.0, bulk_discount: 0.05, min_bulk_items: 5 },
+  { name: 'DMart (Wholesale)', multiplier: 0.88, bulk_discount: 0.08, min_bulk_items: 10 },
 ];
 
 export interface ParsedItem {
@@ -178,16 +178,16 @@ export function processGroceryList(rawText: string, userId?: number): Recommenda
   }
 
   // Generate Explanation
-  if (bestStore.name === 'Wholesale Club') {
-    explanation = `Recommended Wholesale Club because you are buying in bulk (${totalItems} items). The 15% lower base prices plus 10% bulk discount saves you the most.`;
-  } else if (bestStore.name === 'SuperMart') {
-    explanation = `SuperMart is the best balance. You have enough items for a 5% discount, but not enough to justify the Wholesale Club trip.`;
+  if (bestStore.name === 'DMart (Wholesale)') {
+    explanation = `DMart is recommended because your list has ${totalItems} items, qualifying for wholesale pricing. You'll save significantly on bulk staples like grains and oils compared to retail.`;
+  } else if (bestStore.name === 'BigBasket') {
+    explanation = `BigBasket offers the best value for this mid-sized list. Their 5% discount on orders over 5 items makes them cheaper than Reliance Fresh for your current selection.`;
   } else {
-    explanation = `Local Market is best for small trips. You only have a few items, so convenience outweighs the bulk savings.`;
+    explanation = `Reliance Fresh is ideal for this quick trip. While slightly higher priced, their convenience and fresh produce quality are better for small, immediate needs.`;
   }
 
   if (favoriteStore && bestStore.name === favoriteStore) {
-    explanation += ` Plus, it aligns with your recent shopping habits!`;
+    explanation += ` Additionally, this matches your frequent shopping preference for ${favoriteStore}, where you might have loyalty points!`;
   }
 
   return {
