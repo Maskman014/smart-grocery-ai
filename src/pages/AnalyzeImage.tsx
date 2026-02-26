@@ -35,7 +35,13 @@ export const AnalyzeImage: React.FC = () => {
 
       try {
         // 1. Send image to Gemini API for text extraction
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        const apiKey = process.env.GEMINI_API_KEY;
+        
+        if (!apiKey || apiKey === 'undefined' || apiKey === 'MY_GEMINI_API_KEY') {
+          throw new Error('Gemini API Key is not configured. Please set GEMINI_API_KEY in your environment or .env file.');
+        }
+
+        const ai = new GoogleGenAI({ apiKey });
         const base64Data = imageData.split(',')[1];
         
         const response = await ai.models.generateContent({
