@@ -17,6 +17,7 @@ interface Recommendation {
   explanation_text: string;
   total_estimated_cost: number;
   analysis: any;
+  raw_text?: string;
 }
 
 export const EditList: React.FC = () => {
@@ -112,12 +113,13 @@ export const EditList: React.FC = () => {
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          raw_text: rawText, // Keep original raw text or update? Let's keep original for history
+          raw_text: rawText,
           parsed_items: items,
           total_estimated_cost: totalCost,
           recommended_store: finalAnalysis.recommended_store,
           confidence_score: finalAnalysis.confidence_score,
-          explanation_text: finalAnalysis.explanation_text
+          explanation_text: finalAnalysis.explanation_text,
+          status: 'saved'
         }),
       });
 
@@ -254,14 +256,33 @@ export const EditList: React.FC = () => {
                </div>
             )}
 
-            <button
-              onClick={handleSave}
-              disabled={loading}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
-            >
-              {loading ? <Loader2 className="animate-spin" /> : 'Save List'}
-              {!loading && <Save className="w-4 h-4" />}
-            </button>
+            <div className="space-y-3">
+              <button
+                onClick={handleSave}
+                disabled={loading}
+                className="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+              >
+                {loading ? <Loader2 className="animate-spin" /> : 'Save List'}
+                {!loading && <Save className="w-4 h-4" />}
+              </button>
+
+              <button
+                onClick={() => {
+                  const total = items.reduce((sum, item) => sum + Number(item.estimated_price), 0);
+                  navigate('/payment', { state: { 
+                    items, 
+                    total, 
+                    store: recommendation?.recommended_store || 'Selected Store',
+                    raw_text: recommendation?.raw_text || '',
+                    explanation: recommendation?.explanation_text || ''
+                  }});
+                }}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <ShoppingCart className="w-5 h-5" />
+                Buy Now
+              </button>
+            </div>
           </div>
         </div>
       </div>

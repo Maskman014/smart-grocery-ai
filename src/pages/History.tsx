@@ -9,6 +9,7 @@ interface HistoryItem {
   total_cost: number;
   recommended_store: string;
   parsed_items: any[];
+  status: string;
 }
 
 const COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6'];
@@ -51,19 +52,41 @@ export const History: React.FC = () => {
     return acc;
   }, {});
 
+  const totalSpent = history.filter(h => h.status === 'ordered').reduce((sum, h) => sum + h.total_cost, 0);
+  const savedCount = history.filter(h => h.status === 'saved').length;
+  const orderedCount = history.filter(h => h.status === 'ordered').length;
+
   const pieData = Object.keys(storeData).map((key) => ({
     name: key,
     value: storeData[key],
   }));
 
-  const costData = history.slice(0, 10).reverse().map(item => ({
+  const costData = history.filter(h => h.status === 'ordered').slice(0, 10).reverse().map(item => ({
     date: new Date(item.created_at).toLocaleDateString(),
     cost: item.total_cost
   }));
 
   return (
     <div className="space-y-8">
-      <h2 className="text-2xl font-bold text-white">Shopping History</h2>
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-white">Shopping History</h2>
+      </div>
+
+      {/* Summary Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg">
+          <p className="text-gray-400 text-sm uppercase font-bold mb-1">Total Spent</p>
+          <p className="text-3xl font-bold text-emerald-400 font-mono">₹{totalSpent.toFixed(2)}</p>
+        </div>
+        <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg">
+          <p className="text-gray-400 text-sm uppercase font-bold mb-1">Orders Placed</p>
+          <p className="text-3xl font-bold text-blue-400 font-mono">{orderedCount}</p>
+        </div>
+        <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg">
+          <p className="text-gray-400 text-sm uppercase font-bold mb-1">Saved Lists</p>
+          <p className="text-3xl font-bold text-purple-400 font-mono">{savedCount}</p>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Cost Trend Chart */}
@@ -125,17 +148,27 @@ export const History: React.FC = () => {
                 <th className="px-6 py-3">Date</th>
                 <th className="px-6 py-3">Items</th>
                 <th className="px-6 py-3">Recommended Store</th>
+                <th className="px-6 py-3">Status</th>
                 <th className="px-6 py-3 text-right">Total Cost</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-700">
-              {history.map((item) => (
+              {history.map((item: any) => (
                 <tr key={item.id} className="hover:bg-gray-700/50 transition-colors">
                   <td className="px-6 py-4 text-gray-300">{new Date(item.created_at).toLocaleDateString()}</td>
                   <td className="px-6 py-4 text-gray-300">{item.parsed_items.length} items</td>
                   <td className="px-6 py-4">
                     <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-700 text-emerald-400 border border-gray-600">
                       {item.recommended_store}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium border ${
+                      item.status === 'ordered' 
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                        : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                    }`}>
+                      {item.status === 'ordered' ? 'Ordered' : 'Saved'}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right text-white font-medium">₹{item.total_cost.toFixed(2)}</td>

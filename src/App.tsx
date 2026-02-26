@@ -9,6 +9,7 @@ import { History } from './pages/History';
 import { CameraCapture } from './pages/CameraCapture';
 import { AnalyzeImage } from './pages/AnalyzeImage';
 import { EditList } from './pages/EditList';
+import { Payment } from './pages/Payment';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 export default function App() {
@@ -26,6 +27,7 @@ export default function App() {
               <Route path="/camera" element={<CameraCapture />} />
               <Route path="/analyze" element={<AnalyzeImage />} />
               <Route path="/edit-list" element={<EditList />} />
+              <Route path="/payment" element={<Payment />} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
             </Route>
           </Route>

@@ -33,52 +33,69 @@ export const AnalyzeImage: React.FC = () => {
         return;
       }
 
-      try {
-        // 1. Get API Key
-        let apiKey = process.env.GEMINI_API_KEY;
-        
-        // Fallback for platform-specific key selection if available
-        if (!apiKey && (window as any).aistudio) {
-          const hasKey = await (window as any).aistudio.hasSelectedApiKey();
-          if (!hasKey) {
-            setError('API_KEY_REQUIRED');
-            setLoading(false);
-            return;
+      const performAnalysis = async (useSearch: boolean, retryCount = 0): Promise<any> => {
+        try {
+          // 1. Get API Key - Priority: Runtime API_KEY > Build-time GEMINI_API_KEY
+          const apiKey = (window as any).process?.env?.API_KEY || process.env.GEMINI_API_KEY;
+          
+          if (!apiKey || apiKey === 'undefined' || apiKey === 'MY_GEMINI_API_KEY') {
+            const isAISPreview = (window as any).aistudio;
+            if (isAISPreview) {
+              const hasKey = await (window as any).aistudio.hasSelectedApiKey();
+              if (!hasKey) throw new Error('API_KEY_REQUIRED');
+            }
+            throw new Error('API_KEY_MISSING');
           }
-          // The platform injects the key into process.env.API_KEY or similar
-          // In this environment, we assume it's handled if hasSelectedApiKey is true
-        }
 
-        if (!apiKey || apiKey === 'undefined' || apiKey === 'MY_GEMINI_API_KEY') {
-          setError('API_KEY_MISSING');
-          setLoading(false);
-          return;
-        }
+          const ai = new GoogleGenAI({ apiKey });
+          const base64Data = imageData.split(',')[1];
+          
+          const config: any = {};
+          if (useSearch) {
+            config.tools = [{ googleSearch: {} }];
+          }
 
-        const ai = new GoogleGenAI({ apiKey });
-        const base64Data = imageData.split(',')[1];
-        
-        const response = await ai.models.generateContent({
-          model: "gemini-flash-latest",
-          config: {
-            tools: [{ googleSearch: {} }]
-          },
-          contents: {
-            parts: [
-              {
-                inlineData: {
-                  mimeType: "image/jpeg",
-                  data: base64Data
+          const response = await ai.models.generateContent({
+            model: "gemini-flash-latest",
+            config,
+            contents: {
+              parts: [
+                {
+                  inlineData: {
+                    mimeType: "image/jpeg",
+                    data: base64Data
+                  }
+                },
+                {
+                  text: useSearch 
+                    ? "Extract ONLY the grocery items from this image. STRICTLY IGNORE any non-grocery items (like electronics, clothing, tools, or general notes). Then, use Google Search to find the CURRENT AVERAGE PRICES in Indian Rupees (INR) for these grocery items in major Indian supermarkets (like BigBasket, Reliance Fresh, or DMart). Return ONLY a comma-separated list of grocery items with their quantities, units, and estimated prices in INR. Example: '2kg rice (₹120), 1 liter milk (₹60), 6 eggs (₹42)'. Do not include any other text or non-grocery items."
+                    : "Extract ONLY the grocery items from this image. STRICTLY IGNORE any non-grocery items (like electronics, clothing, tools, or general notes). Return ONLY a comma-separated list of grocery items with their quantities, units, and estimated prices in Indian Rupees (INR) based on your internal knowledge. Example: '2kg rice (₹120), 1 liter milk (₹60), 6 eggs (₹42)'. Do not include any other text or non-grocery items."
                 }
-              },
-              {
-                text: "Extract the grocery list from this image. Then, use Google Search to find the CURRENT AVERAGE PRICES in Indian Rupees (INR) for these items in major Indian supermarkets (like BigBasket, Reliance Fresh, or DMart). Return ONLY a comma-separated list of items with their quantities, units, and estimated prices in INR. Example: '2kg rice (₹120), 1 liter milk (₹60), 6 eggs (₹42)'. Do not include any other text."
-              }
-            ]
-          }
-        });
+              ]
+            }
+          });
 
-        const extractedText = response.text;
+          return response.text;
+        } catch (err: any) {
+          // Handle 429 Quota Exceeded with retry
+          if ((err.message?.includes('429') || err.message?.includes('quota')) && retryCount < 2) {
+            await new Promise(resolve => setTimeout(resolve, 2000 * (retryCount + 1)));
+            return performAnalysis(useSearch, retryCount + 1);
+          }
+          throw err;
+        }
+      };
+
+      try {
+        let extractedText = '';
+        try {
+          // Try with search first
+          extractedText = await performAnalysis(true);
+        } catch (searchErr: any) {
+          console.warn("Search analysis failed, falling back to standard AI...", searchErr);
+          // Fallback to standard analysis without search tool
+          extractedText = await performAnalysis(false);
+        }
         
         // 2. Send extracted text to our backend for parsing/pricing
         const res = await fetch('/api/grocery/analyze-list', {
@@ -98,8 +115,16 @@ export const AnalyzeImage: React.FC = () => {
           raw_text: extractedText || ''
         });
       } catch (err: any) {
-        console.error(err);
-        setError(err.message || "Failed to process image");
+        console.error("Final Analysis Error:", err);
+        if (err.message === 'API_KEY_REQUIRED') {
+          setError('API_KEY_REQUIRED');
+        } else if (err.message === 'API_KEY_MISSING') {
+          setError('API_KEY_MISSING');
+        } else if (err.message?.includes('429') || err.message?.includes('quota')) {
+          setError('QUOTA_EXCEEDED');
+        } else {
+          setError(err.message || "Failed to process image");
+        }
       } finally {
         setLoading(false);
       }
@@ -145,6 +170,28 @@ export const AnalyzeImage: React.FC = () => {
               >
                 Select API Key
               </button>
+            </>
+          ) : error === 'QUOTA_EXCEEDED' ? (
+            <>
+              <h3 className="text-2xl font-bold text-white">Quota Exceeded (429)</h3>
+              <p className="text-gray-300">The current API key has reached its rate limit. Please wait a moment or try a different API key.</p>
+              <div className="flex flex-col gap-3">
+                <button 
+                  onClick={async () => {
+                    await (window as any).aistudio.openSelectKey();
+                    window.location.reload();
+                  }}
+                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-white font-bold transition-colors"
+                >
+                  Change API Key
+                </button>
+                <button 
+                  onClick={() => window.location.reload()}
+                  className="w-full py-3 bg-gray-700 hover:bg-gray-600 rounded-lg text-white font-bold transition-colors"
+                >
+                  Retry
+                </button>
+              </div>
             </>
           ) : error === 'API_KEY_MISSING' ? (
             <div className="text-left space-y-4">

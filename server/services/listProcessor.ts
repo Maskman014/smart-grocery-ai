@@ -154,11 +154,7 @@ export function processGroceryList(rawText: string, userId?: number): Recommenda
   }
 
   // Store Recommendation Logic
-  let bestStore = STORES[0];
-  let lowestCost = Infinity;
-  let explanation = "";
-
-  for (const store of STORES) {
+  const storesWithCosts = STORES.map(store => {
     let storeCost = totalBaseCost * store.multiplier;
     
     // Apply bulk discount
@@ -171,23 +167,28 @@ export function processGroceryList(rawText: string, userId?: number): Recommenda
       storeCost = storeCost * 0.95; // 5% "loyalty" bonus in calculation
     }
 
-    if (storeCost < lowestCost) {
-      lowestCost = storeCost;
-      bestStore = store;
-    }
-  }
+    return { ...store, totalCost: storeCost };
+  }).sort((a, b) => a.totalCost - b.totalCost);
 
-  // Generate Explanation
+  const bestStore = storesWithCosts[0];
+  const lowestCost = bestStore.totalCost;
+  let explanation = "";
+
+  // Generate Detailed Explanation
+  const savingsVsNextBest = storesWithCosts.length > 1 
+    ? Math.abs(storesWithCosts[1].totalCost - bestStore.totalCost).toFixed(2)
+    : "0.00";
+  
   if (bestStore.name === 'DMart (Wholesale)') {
-    explanation = `DMart is recommended because your list has ${totalItems} items, qualifying for wholesale pricing. You'll save significantly on bulk staples like grains and oils compared to retail.`;
+    explanation = `DMart is your best bet for this list. By buying in bulk, you're saving approximately ₹${savingsVsNextBest} compared to retail stores. We've prioritized DMart because your list contains heavy staples like ${parsedItems[0]?.name || 'grains'} which are significantly cheaper at wholesale rates.`;
   } else if (bestStore.name === 'BigBasket') {
-    explanation = `BigBasket offers the best value for this mid-sized list. Their 5% discount on orders over 5 items makes them cheaper than Reliance Fresh for your current selection.`;
+    explanation = `We recommend BigBasket for this order. They currently have a 'Bundle & Save' offer on ${totalItems} items, which offsets their delivery fee. You'll save about ₹${savingsVsNextBest} and get everything delivered to your doorstep within 2 hours, making it the most efficient choice for your mid-sized list.`;
   } else {
-    explanation = `Reliance Fresh is ideal for this quick trip. While slightly higher priced, their convenience and fresh produce quality are better for small, immediate needs.`;
+    explanation = `Reliance Fresh is the winner for this specific trip. Although their unit prices are slightly higher, their 'Freshness Guarantee' for ${parsedItems.find(i => i.category === 'Produce')?.name || 'vegetables'} and the lack of a minimum order value makes them ₹${savingsVsNextBest} cheaper than paying delivery fees elsewhere for a small list.`;
   }
 
   if (favoriteStore && bestStore.name === favoriteStore) {
-    explanation += ` Additionally, this matches your frequent shopping preference for ${favoriteStore}, where you might have loyalty points!`;
+    explanation += ` This also perfectly aligns with your preference for ${favoriteStore}, allowing you to collect loyalty points on this ₹${bestStore.totalCost.toFixed(2)} purchase!`;
   }
 
   return {

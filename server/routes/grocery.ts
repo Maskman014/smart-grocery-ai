@@ -22,12 +22,12 @@ router.post('/analyze-list', authenticateToken, (req: AuthRequest, res) => {
 
 router.post('/save-list', authenticateToken, (req: AuthRequest, res) => {
   try {
-    const { raw_text, parsed_items, total_estimated_cost, recommended_store, confidence_score, explanation_text } = req.body;
+    const { raw_text, parsed_items, total_estimated_cost, recommended_store, confidence_score, explanation_text, status } = req.body;
 
     // Save to DB
     const stmt = db.prepare(`
-      INSERT INTO grocery_lists (user_id, raw_text, parsed_items, total_cost, store_recommendation, confidence_score, explanation)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO grocery_lists (user_id, raw_text, parsed_items, total_cost, store_recommendation, confidence_score, explanation, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
@@ -37,7 +37,8 @@ router.post('/save-list', authenticateToken, (req: AuthRequest, res) => {
       total_estimated_cost,
       recommended_store,
       confidence_score,
-      explanation_text
+      explanation_text,
+      status || 'saved'
     );
 
     res.json({ success: true });

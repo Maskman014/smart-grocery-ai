@@ -21,9 +21,20 @@ db.exec(`
     store_recommendation TEXT NOT NULL,
     confidence_score REAL NOT NULL,
     explanation TEXT NOT NULL,
+    status TEXT DEFAULT 'saved',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(user_id) REFERENCES users(id)
   );
+
+  -- Migration for existing databases
+  PRAGMA table_info(grocery_lists);
 `);
+
+try {
+  db.exec("ALTER TABLE grocery_lists ADD COLUMN status TEXT DEFAULT 'saved'");
+} catch (e) {
+  // Column already exists
+}
+
 
 export default db;

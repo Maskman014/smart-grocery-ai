@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { ShoppingCart, CheckCircle, AlertCircle, Loader2, Plus, Trash2, Save } from 'lucide-react';
+import { ShoppingCart, CheckCircle, AlertCircle, Loader2, Plus, Trash2, Save, History, Clock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { GoogleGenAI } from "@google/genai";
 
 interface ParsedItem {
   name: string;
@@ -29,7 +31,26 @@ export const Dashboard: React.FC = () => {
   const [result, setResult] = useState<Recommendation | null>(null);
   const [error, setError] = useState('');
   const [items, setItems] = useState<ParsedItem[]>([]);
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const { token } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const res = await fetch('/api/grocery/grocery-history', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setRecentActivity(data.slice(0, 3));
+        }
+      } catch (err) {
+        console.error('Failed to fetch history:', err);
+      }
+    };
+    fetchHistory();
+  }, [token]);
 
   const handleAnalyze = async () => {
     if (!rawText.trim()) return;
@@ -38,13 +59,49 @@ export const Dashboard: React.FC = () => {
     setResult(null);
 
     try {
+      // 1. Get API Key
+      const apiKey = (window as any).process?.env?.API_KEY || process.env.GEMINI_API_KEY;
+      
+      if (!apiKey || apiKey === 'undefined' || apiKey === 'MY_GEMINI_API_KEY') {
+        const isAISPreview = (window as any).aistudio;
+        if (isAISPreview) {
+          const hasKey = await (window as any).aistudio.hasSelectedApiKey();
+          if (!hasKey) throw new Error('API_KEY_REQUIRED');
+        }
+        throw new Error('API_KEY_MISSING');
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+      
+      // 2. Use Gemini to filter and extract ONLY grocery items
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: {
+          parts: [
+            {
+              text: `Extract ONLY the grocery items from the following text: "${rawText}". 
+              STRICTLY IGNORE any non-grocery items (like electronics, clothing, tools, or general notes). 
+              Return ONLY a comma-separated list of grocery items with their quantities, units, and estimated prices in Indian Rupees (INR) based on your internal knowledge. 
+              Example: '2kg rice (₹120), 1 liter milk (₹60), 6 eggs (₹42)'. 
+              Do not include any other text or non-grocery items.`
+            }
+          ]
+        }
+      });
+
+      const filteredText = response.text;
+      if (!filteredText || filteredText.trim().length < 2) {
+        throw new Error('No grocery items found in your input.');
+      }
+
+      // 3. Send to backend for final structured parsing
       const res = await fetch('/api/grocery/analyze-list', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ raw_text: rawText }),
+        body: JSON.stringify({ raw_text: filteredText }),
       });
 
       if (!res.ok) throw new Error('Failed to analyze list');
@@ -52,7 +109,12 @@ export const Dashboard: React.FC = () => {
       setResult(data);
       setItems(data.parsed_items);
     } catch (err: any) {
-      setError(err.message);
+      console.error(err);
+      if (err.message === 'API_KEY_REQUIRED') {
+        setError('Please select an API key to use AI analysis.');
+      } else {
+        setError(err.message || 'Failed to analyze list');
+      }
     } finally {
       setLoading(false);
     }
@@ -77,7 +139,8 @@ export const Dashboard: React.FC = () => {
           total_estimated_cost: totalCost,
           recommended_store: result.recommended_store,
           confidence_score: result.confidence_score,
-          explanation_text: result.explanation_text
+          explanation_text: result.explanation_text,
+          status: 'saved'
         }),
       });
 
@@ -86,6 +149,15 @@ export const Dashboard: React.FC = () => {
       setRawText('');
       setResult(null);
       setItems([]);
+      
+      // Refresh recent activity
+      const historyRes = await fetch('/api/grocery/grocery-history', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (historyRes.ok) {
+        const historyData = await historyRes.json();
+        setRecentActivity(historyData.slice(0, 3));
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -109,31 +181,84 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
-        <h2 className="text-2xl font-bold mb-4 text-white flex items-center gap-2">
-          <ShoppingCart className="text-emerald-500" />
-          New Grocery List
-        </h2>
-        <div className="space-y-4">
-          <textarea
-            className="w-full h-32 bg-gray-900 border border-gray-600 rounded-lg p-4 text-white placeholder-gray-500 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-            placeholder="Enter your list here (e.g., '2kg rice, 1 liter milk, 6 eggs')..."
-            value={rawText}
-            onChange={(e) => setRawText(e.target.value)}
-          />
-          <button
-            onClick={handleAnalyze}
-            disabled={loading || !rawText.trim()}
-            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {loading ? <Loader2 className="animate-spin" /> : 'Analyze List'}
-          </button>
-          {error && (
-            <div className="bg-red-900/50 border border-red-700 text-red-200 p-4 rounded-lg flex items-center gap-2">
-              <AlertCircle className="w-5 h-5" />
-              {error}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* New List Input */}
+        <div className="lg:col-span-2">
+          <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 h-full">
+            <h2 className="text-2xl font-bold mb-4 text-white flex items-center gap-2">
+              <ShoppingCart className="text-emerald-500" />
+              New Grocery List
+            </h2>
+            <div className="space-y-4">
+              <textarea
+                className="w-full h-48 bg-gray-900 border border-gray-600 rounded-lg p-4 text-white placeholder-gray-500 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                placeholder="Enter your list here (e.g., '2kg rice, 1 liter milk, 6 eggs')..."
+                value={rawText}
+                onChange={(e) => setRawText(e.target.value)}
+              />
+              <button
+                onClick={handleAnalyze}
+                disabled={loading || !rawText.trim()}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {loading ? <Loader2 className="animate-spin" /> : 'Analyze List'}
+              </button>
+              {error && (
+                <div className="bg-red-900/50 border border-red-700 text-red-200 p-4 rounded-lg flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5" />
+                  {error}
+                </div>
+              )}
             </div>
-          )}
+          </div>
+        </div>
+
+        {/* Recent Activity Sidebar */}
+        <div className="lg:col-span-1">
+          <div className="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 h-full">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <Clock className="text-blue-400 w-5 h-5" />
+                Recent Activity
+              </h3>
+              <button 
+                onClick={() => navigate('/history')}
+                className="text-emerald-400 hover:text-emerald-300 text-xs font-bold uppercase tracking-wider"
+              >
+                View All
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {recentActivity.length > 0 ? (
+                recentActivity.map((activity) => (
+                  <div key={activity.id} className="p-4 bg-gray-900/50 rounded-xl border border-gray-700 hover:border-gray-600 transition-all cursor-pointer group" onClick={() => navigate('/history')}>
+                    <div className="flex justify-between items-start mb-2">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-tighter border ${
+                        activity.status === 'ordered' 
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                          : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                      }`}>
+                        {activity.status === 'ordered' ? 'Order' : 'List'}
+                      </span>
+                      <span className="text-[10px] text-gray-500 font-mono">
+                        {new Date(activity.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-300 font-medium line-clamp-1 mb-1 group-hover:text-white transition-colors">
+                      {activity.parsed_items.length} items from {activity.recommended_store}
+                    </p>
+                    <p className="text-xs text-emerald-400 font-mono">₹{activity.total_cost.toFixed(2)}</p>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-12">
+                  <History className="w-12 h-12 text-gray-700 mx-auto mb-4" />
+                  <p className="text-gray-500 text-sm">No recent activity yet</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -158,14 +283,32 @@ export const Dashboard: React.FC = () => {
                     ₹{items.reduce((sum, item) => sum + Number(item.estimated_price), 0).toFixed(2)}
                   </span>
                 </div>
-                <button
-                  onClick={handleSave}
-                  disabled={loading}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
-                >
-                  <Save className="w-4 h-4" />
-                  Save to History
-                </button>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={handleSave}
+                    disabled={loading}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
+                  >
+                    <Save className="w-4 h-4" />
+                    Save List
+                  </button>
+                  <button
+                    onClick={() => {
+                      const total = items.reduce((sum, item) => sum + Number(item.estimated_price), 0);
+                      navigate('/payment', { state: { 
+                        items, 
+                        total, 
+                        store: result.recommended_store,
+                        raw_text: rawText,
+                        explanation: result.explanation_text
+                      }});
+                    }}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm"
+                  >
+                    <ShoppingCart className="w-4 h-4" />
+                    Buy Now
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -187,7 +330,7 @@ export const Dashboard: React.FC = () => {
                       <th className="px-4 py-3 w-24">Qty</th>
                       <th className="px-4 py-3 w-24">Unit</th>
                       <th className="px-4 py-3">Category</th>
-                      <th className="px-4 py-3 text-right w-32">Price ($)</th>
+                      <th className="px-4 py-3 text-right w-32">Price (₹)</th>
                       <th className="px-4 py-3 w-10"></th>
                     </tr>
                   </thead>
