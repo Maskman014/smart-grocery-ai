@@ -8,14 +8,18 @@ const router = express.Router();
 router.post('/analyze-list', authenticateToken, (req: AuthRequest, res) => {
   try {
     const { raw_text } = req.body;
-    if (!raw_text) {
-      return res.status(400).json({ error: 'Raw text is required' });
+    console.log('Analyzing list:', raw_text ? raw_text.substring(0, 50) + '...' : 'empty');
+    
+    if (!raw_text || typeof raw_text !== 'string' || raw_text.trim().length === 0) {
+      // Instead of error, return empty result or handle gracefully
+      // But for now, let's return a specific error that frontend can handle
+      return res.status(400).json({ error: 'No grocery items found to analyze.' });
     }
 
     const result = processGroceryList(raw_text, req.user!.id);
     res.json(result);
   } catch (error) {
-    console.error(error);
+    console.error('Error in analyze-list:', error);
     res.status(500).json({ error: 'Failed to analyze list' });
   }
 });

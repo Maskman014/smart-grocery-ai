@@ -113,7 +113,7 @@ export const EditList: React.FC = () => {
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          raw_text: rawText,
+          raw_text: text, // Use the constructed text from current items
           parsed_items: items,
           total_estimated_cost: totalCost,
           recommended_store: finalAnalysis.recommended_store,
@@ -269,11 +269,14 @@ export const EditList: React.FC = () => {
               <button
                 onClick={() => {
                   const total = items.reduce((sum, item) => sum + Number(item.estimated_price), 0);
+                  // Construct raw text from current items to ensure it matches
+                  const currentRawText = items.map(i => `${i.quantity}${i.unit !== 'qty' ? i.unit : ''} ${i.name}`).join(', ');
+                  
                   navigate('/payment', { state: { 
                     items, 
                     total, 
                     store: recommendation?.recommended_store || 'Selected Store',
-                    raw_text: recommendation?.raw_text || '',
+                    raw_text: currentRawText,
                     explanation: recommendation?.explanation_text || ''
                   }});
                 }}

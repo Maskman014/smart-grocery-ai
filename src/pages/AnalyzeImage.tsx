@@ -68,8 +68,8 @@ export const AnalyzeImage: React.FC = () => {
                 },
                 {
                   text: useSearch 
-                    ? "Extract ONLY the grocery items from this image. STRICTLY IGNORE any non-grocery items (like electronics, clothing, tools, or general notes). Then, use Google Search to find the CURRENT AVERAGE PRICES in Indian Rupees (INR) for these grocery items in major Indian supermarkets (like BigBasket, Reliance Fresh, or DMart). Return ONLY a comma-separated list of grocery items with their quantities, units, and estimated prices in INR. Example: '2kg rice (₹120), 1 liter milk (₹60), 6 eggs (₹42)'. Do not include any other text or non-grocery items."
-                    : "Extract ONLY the grocery items from this image. STRICTLY IGNORE any non-grocery items (like electronics, clothing, tools, or general notes). Return ONLY a comma-separated list of grocery items with their quantities, units, and estimated prices in Indian Rupees (INR) based on your internal knowledge. Example: '2kg rice (₹120), 1 liter milk (₹60), 6 eggs (₹42)'. Do not include any other text or non-grocery items."
+                    ? "Extract ONLY the grocery items from this image. STRICTLY IGNORE any non-grocery items (like electronics, clothing, tools, or general notes). Then, use Google Search to find the CURRENT AVERAGE PRICES in Indian Rupees (INR) for these grocery items in major Indian supermarkets (like BigBasket, Reliance Fresh, or DMart). Return ONLY a comma-separated list of grocery items with their quantities, units, and estimated prices in INR. Example: '2kg rice (₹120), 1 liter milk (₹60), 6 eggs (₹42)'. If NO grocery items are found, return exactly 'NO_ITEMS_FOUND'. Do not include any other text."
+                    : "Extract ONLY the grocery items from this image. STRICTLY IGNORE any non-grocery items (like electronics, clothing, tools, or general notes). Return ONLY a comma-separated list of grocery items with their quantities, units, and estimated prices in Indian Rupees (INR) based on your internal knowledge. Example: '2kg rice (₹120), 1 liter milk (₹60), 6 eggs (₹42)'. If NO grocery items are found, return exactly 'NO_ITEMS_FOUND'. Do not include any other text."
                 }
               ]
             }
@@ -97,6 +97,11 @@ export const AnalyzeImage: React.FC = () => {
           extractedText = await performAnalysis(false);
         }
         
+        // Check if extracted text is valid
+        if (!extractedText || extractedText.trim().length < 2 || extractedText.includes('NO_ITEMS_FOUND') || extractedText.toLowerCase().includes('no grocery items')) {
+          throw new Error('No grocery items found in the image. Please try again with a clearer image of groceries.');
+        }
+
         // 2. Send extracted text to our backend for parsing/pricing
         const res = await fetch('/api/grocery/analyze-list', {
           method: 'POST',
@@ -107,7 +112,26 @@ export const AnalyzeImage: React.FC = () => {
           body: JSON.stringify({ raw_text: extractedText }),
         });
 
-        if (!res.ok) throw new Error('Failed to analyze list structure');
+        if (!res.ok) {
+          let errorMessage = `Failed to analyze list structure (Status: ${res.status})`;
+          try {
+            const errorData = await res.json();
+            if (errorData.error) {
+              errorMessage = errorData.error;
+            } else {
+              errorMessage += ' - No error details returned from server';
+            }
+          } catch (e) {
+            const text = await res.text().catch(() => '');
+            if (text) {
+              errorMessage += `: ${text.substring(0, 100)}`;
+            } else {
+              errorMessage += ' - Empty response body';
+            }
+          }
+          throw new Error(errorMessage);
+        }
+        
         const data = await res.json();
         
         setResult({

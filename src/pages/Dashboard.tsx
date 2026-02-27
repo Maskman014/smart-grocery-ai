@@ -83,14 +83,15 @@ export const Dashboard: React.FC = () => {
               STRICTLY IGNORE any non-grocery items (like electronics, clothing, tools, or general notes). 
               Return ONLY a comma-separated list of grocery items with their quantities, units, and estimated prices in Indian Rupees (INR) based on your internal knowledge. 
               Example: '2kg rice (₹120), 1 liter milk (₹60), 6 eggs (₹42)'. 
-              Do not include any other text or non-grocery items.`
+              If NO grocery items are found, return exactly 'NO_ITEMS_FOUND'.
+              Do not include any other text.`
             }
           ]
         }
       });
 
       const filteredText = response.text;
-      if (!filteredText || filteredText.trim().length < 2) {
+      if (!filteredText || filteredText.trim().length < 2 || filteredText.includes('NO_ITEMS_FOUND')) {
         throw new Error('No grocery items found in your input.');
       }
 
@@ -104,7 +105,18 @@ export const Dashboard: React.FC = () => {
         body: JSON.stringify({ raw_text: filteredText }),
       });
 
-      if (!res.ok) throw new Error('Failed to analyze list');
+      if (!res.ok) {
+        let errorMessage = 'Failed to analyze list';
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          const text = await res.text().catch(() => '');
+          if (text) errorMessage = `Server Error: ${text.substring(0, 100)}`;
+        }
+        throw new Error(errorMessage);
+      }
+      
       const data = await res.json();
       setResult(data);
       setItems(data.parsed_items);

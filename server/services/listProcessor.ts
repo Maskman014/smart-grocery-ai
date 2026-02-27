@@ -86,6 +86,9 @@ export function processGroceryList(rawText: string, userId?: number): Recommenda
       unit = matchLast[3] ? matchLast[3].toLowerCase() : 'qty';
     }
 
+    // Strip price info like (₹120) or - ₹120 from name
+    name = name.replace(/\s*\(?₹\s*\d+(?:\.\d+)?\)?/g, '').replace(/\s*-\s*₹\s*\d+(?:\.\d+)?/g, '').trim();
+
     // Normalize units
     if (['kilogram', 'kilograms'].includes(unit)) unit = 'kg';
     if (['liter', 'liters'].includes(unit)) unit = 'l';
