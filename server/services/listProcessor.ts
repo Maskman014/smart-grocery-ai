@@ -3,32 +3,59 @@ import db from '../db.js';
 // ... (existing imports and constants)
 
 const ITEM_DATABASE: Record<string, { category: string; base_price: number }> = {
-  milk: { category: 'Dairy', base_price: 60.00 },
-  bread: { category: 'Bakery', base_price: 40.00 },
-  eggs: { category: 'Dairy', base_price: 72.00 }, // per dozen
-  banana: { category: 'Produce', base_price: 50.00 }, // per dozen
-  apple: { category: 'Produce', base_price: 180.00 }, // per kg
-  chicken: { category: 'Meat', base_price: 250.00 }, // per kg
-  rice: { category: 'Grains', base_price: 60.00 }, // per kg
+  milk: { category: 'Dairy', base_price: 64.00 }, // Corrected to realistic price (approx ₹32/500ml)
+  bread: { category: 'Bakery', base_price: 50.00 },
+  eggs: { category: 'Dairy', base_price: 84.00 }, // approx ₹7 per egg
+  banana: { category: 'Produce', base_price: 60.00 }, // per dozen
+  apple: { category: 'Produce', base_price: 200.00 }, // per kg
+  chicken: { category: 'Meat', base_price: 240.00 }, // per kg
+  rice: { category: 'Grains', base_price: 60.00 }, // per kg (Sona Masoori/Kolam)
+  basmati: { category: 'Grains', base_price: 140.00 }, // per kg
+  dal: { category: 'Grains', base_price: 160.00 }, // per kg (Toor/Arhar)
+  toor: { category: 'Grains', base_price: 160.00 },
+  moong: { category: 'Grains', base_price: 120.00 },
+  masoor: { category: 'Grains', base_price: 100.00 },
+  urad: { category: 'Grains', base_price: 140.00 },
+  oil: { category: 'Pantry', base_price: 130.00 }, // per liter (Sunflower)
+  ghee: { category: 'Pantry', base_price: 600.00 }, // per kg
   cheese: { category: 'Dairy', base_price: 450.00 }, // per kg
-  yogurt: { category: 'Dairy', base_price: 30.00 },
-  potato: { category: 'Produce', base_price: 30.00 }, // per kg
+  yogurt: { category: 'Dairy', base_price: 40.00 },
+  curd: { category: 'Dairy', base_price: 40.00 },
+  paneer: { category: 'Dairy', base_price: 400.00 }, // per kg
+  potato: { category: 'Produce', base_price: 35.00 }, // per kg
   onion: { category: 'Produce', base_price: 40.00 }, // per kg
   tomato: { category: 'Produce', base_price: 40.00 }, // per kg
+  ginger: { category: 'Produce', base_price: 120.00 }, // per kg
+  garlic: { category: 'Produce', base_price: 200.00 }, // per kg
+  chilli: { category: 'Produce', base_price: 80.00 }, // per kg
   beef: { category: 'Meat', base_price: 400.00 }, // per kg
-  pasta: { category: 'Grains', base_price: 120.00 },
+  mutton: { category: 'Meat', base_price: 800.00 }, // per kg
+  fish: { category: 'Meat', base_price: 350.00 }, // per kg
+  pasta: { category: 'Grains', base_price: 100.00 },
+  maggi: { category: 'Grains', base_price: 14.00 }, // per pack
+  noodles: { category: 'Grains', base_price: 50.00 },
   cereal: { category: 'Breakfast', base_price: 350.00 },
-  coffee: { category: 'Beverages', base_price: 600.00 },
-  tea: { category: 'Beverages', base_price: 400.00 },
-  sugar: { category: 'Baking', base_price: 45.00 },
-  flour: { category: 'Baking', base_price: 40.00 },
-  butter: { category: 'Dairy', base_price: 500.00 },
+  coffee: { category: 'Beverages', base_price: 600.00 }, // Instant coffee jar
+  tea: { category: 'Beverages', base_price: 400.00 }, // Premium tea powder
+  sugar: { category: 'Baking', base_price: 44.00 },
+  salt: { category: 'Pantry', base_price: 24.00 },
+  flour: { category: 'Baking', base_price: 45.00 },
+  atta: { category: 'Grains', base_price: 45.00 },
+  maida: { category: 'Baking', base_price: 40.00 },
+  butter: { category: 'Dairy', base_price: 540.00 },
+  biscuits: { category: 'Snacks', base_price: 30.00 },
+  chips: { category: 'Snacks', base_price: 20.00 },
+  chocolate: { category: 'Snacks', base_price: 80.00 },
+  soap: { category: 'Household', base_price: 40.00 },
+  shampoo: { category: 'Household', base_price: 180.00 },
+  toothpaste: { category: 'Household', base_price: 90.00 },
+  detergent: { category: 'Household', base_price: 200.00 },
 };
 
 const STORES = [
-  { name: 'Reliance Fresh', multiplier: 1.05, bulk_discount: 0.02, min_bulk_items: 0 },
-  { name: 'BigBasket', multiplier: 1.0, bulk_discount: 0.05, min_bulk_items: 5 },
-  { name: 'DMart (Wholesale)', multiplier: 0.88, bulk_discount: 0.08, min_bulk_items: 10 },
+  { name: 'Reliance Fresh', multiplier: 1.02, bulk_discount: 0.03, min_bulk_items: 5 },
+  { name: 'BigBasket', multiplier: 1.0, bulk_discount: 0.05, min_bulk_items: 8 },
+  { name: 'DMart (Wholesale)', multiplier: 0.96, bulk_discount: 0.08, min_bulk_items: 15 },
 ];
 
 export interface ParsedItem {
@@ -102,7 +129,7 @@ export function processGroceryList(rawText: string, userId?: number): Recommenda
     
     // Default fallback
     let category = 'Uncategorized';
-    let price = 2.00; // Default price guess
+    let price = 50.00; // Default price guess (updated from 2.00)
 
     if (bestMatchKey) {
       const data = ITEM_DATABASE[bestMatchKey];
@@ -165,6 +192,22 @@ export function processGroceryList(rawText: string, userId?: number): Recommenda
       storeCost = storeCost * (1 - store.bulk_discount);
     }
 
+    // Category-specific adjustments
+    // Reliance is better for fresh produce
+    if (store.name === 'Reliance Fresh' && (categoryCounts['Produce'] || 0) > (totalBaseCost * 0.3)) {
+       storeCost *= 0.92; // 8% discount on produce-heavy lists
+    }
+
+    // BigBasket is better for small, quick lists (convenience)
+    if (store.name === 'BigBasket' && totalItems < 8) {
+       storeCost *= 0.95; // 5% convenience factor
+    }
+
+    // DMart is only good for really big bulk lists
+    if (store.name === 'DMart (Wholesale)' && totalItems < 10) {
+       storeCost *= 1.10; // 10% penalty for small lists (travel cost/time)
+    }
+
     // Apply history bias (loyalty discount simulation)
     if (store.name === favoriteStore) {
       storeCost = storeCost * 0.95; // 5% "loyalty" bonus in calculation
@@ -185,7 +228,7 @@ export function processGroceryList(rawText: string, userId?: number): Recommenda
   if (bestStore.name === 'DMart (Wholesale)') {
     explanation = `DMart is your best bet for this list. By buying in bulk, you're saving approximately ₹${savingsVsNextBest} compared to retail stores. We've prioritized DMart because your list contains heavy staples like ${parsedItems[0]?.name || 'grains'} which are significantly cheaper at wholesale rates.`;
   } else if (bestStore.name === 'BigBasket') {
-    explanation = `We recommend BigBasket for this order. They currently have a 'Bundle & Save' offer on ${totalItems} items, which offsets their delivery fee. You'll save about ₹${savingsVsNextBest} and get everything delivered to your doorstep within 2 hours, making it the most efficient choice for your mid-sized list.`;
+    explanation = `We recommend BigBasket for this order. For smaller lists like yours (${totalItems} items), their quick delivery and lack of minimum order surcharge makes them the most economical choice. You'll save about ₹${savingsVsNextBest} and save time compared to visiting a wholesale store.`;
   } else {
     explanation = `Reliance Fresh is the winner for this specific trip. Although their unit prices are slightly higher, their 'Freshness Guarantee' for ${parsedItems.find(i => i.category === 'Produce')?.name || 'vegetables'} and the lack of a minimum order value makes them ₹${savingsVsNextBest} cheaper than paying delivery fees elsewhere for a small list.`;
   }

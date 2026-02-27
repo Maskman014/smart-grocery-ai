@@ -209,13 +209,9 @@ export const EditList: React.FC = () => {
                         </select>
                       </td>
                       <td className="px-4 py-2 text-right">
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={item.estimated_price}
-                          onChange={(e) => updateItem(idx, 'estimated_price', parseFloat(e.target.value))}
-                          className="bg-transparent border-b border-transparent focus:border-emerald-500 focus:outline-none text-gray-300 w-full text-right"
-                        />
+                        <span className="text-gray-300 font-mono">
+                          {item.estimated_price.toFixed(2)}
+                        </span>
                       </td>
                       <td className="px-4 py-2 text-center">
                         <button onClick={() => deleteItem(idx)} className="text-red-400 hover:text-red-300">
