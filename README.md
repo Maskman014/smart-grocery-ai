@@ -14,15 +14,29 @@ A hackathon-level full-stack AI grocery assistant.
 - **Language**: TypeScript throughout
 
 ## Running Locally
-1. Install dependencies:
+
+1. **Create a `.env` file**:
+   Create a file named `.env` in the root directory of the project.
+
+2. **Add your Gemini API Key**:
+   Open the `.env` file and add your Gemini API key:
+   ```env
+   GEMINI_API_KEY=your_actual_api_key_here
+   ```
+   You can get your API key from [Google AI Studio](https://aistudio.google.com/).
+
+3. **Install dependencies**:
    ```bash
    npm install
    ```
-2. Start the development server:
+
+4. **Start the development server**:
    ```bash
    npm run dev
    ```
-3. Open http://localhost:3000
+
+5. **Open the app**:
+   Visit http://localhost:3000 in your browser.
 
 ## Architecture
 - `server.ts`: Main entry point.
